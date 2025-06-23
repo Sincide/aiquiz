@@ -200,3 +200,51 @@
 - **Quality Assurance**: Manual verification of domain assignments for accuracy
 - **Seamless Integration**: Updated data loader to use new domain fields from quiz.json
 
+## Application Launcher Integration
+
+### Fuzzel/Desktop Launcher Support
+- **Desktop Entry Created**: Added `cissp-quiz.desktop` file for system integration
+- **Launch Script**: Created `launch-quiz.fish` with dependency checking and browser auto-open
+- **Application Menu**: Quiz now appears in fuzzel and other application launchers
+- **Categories**: Properly categorized under Education and Development sections
+
+### Features
+- **Dependency Validation**: Checks for Python and Flask before starting
+- **Auto Browser Launch**: Automatically opens default browser to http://localhost:5000
+- **Clean Startup**: Professional startup messages and error handling
+- **Background Process**: Server runs in background with proper process management
+
+### Usage
+- **Via Fuzzel**: Type "CISSP Quiz" in fuzzel to launch
+- **Via Terminal**: Run `./launch-quiz.fish` from project directory
+- **Via Desktop**: Available in application menus and launchers
+
+## Automated Setup System
+
+### One-Command Installation
+- **Fresh System Setup**: Created `setup.fish` for complete application setup after git clone
+- **Dependency Management**: Automatically installs python-flask and python-requests via pacman
+- **Ollama Integration**: Detects and configures Ollama with llama3.2:3b model
+- **Desktop Integration**: Creates launcher entries and updates desktop database
+- **Validation Testing**: Tests all components and dependencies before completion
+
+### Setup Script Features
+- **Platform Detection**: Ensures running on Arch Linux before proceeding
+- **Dependency Validation**: Checks and installs required Python packages
+- **AI Model Management**: Downloads and configures optimal AI model for explanations
+- **Application Testing**: Validates Python imports, quiz data loading, and database initialization
+- **Documentation Generation**: Creates SETUP_COMPLETE.md with quick reference guide
+- **Interactive Launch**: Offers to start application immediately after setup
+
+### Files Created
+- **setup.fish**: Main setup script for fresh installations
+- **launch-quiz.fish**: Application launcher with browser auto-open
+- **~/.local/share/applications/cissp-quiz.desktop**: Desktop entry for system integration
+- **SETUP_COMPLETE.md**: Post-setup reference documentation
+
+### User Experience
+- **Single Command**: `./setup.fish` handles everything from dependencies to desktop integration
+- **Progress Feedback**: Colored output with emoji indicators for each setup step
+- **Error Handling**: Clear error messages and troubleshooting guidance
+- **Zero Configuration**: Automatically detects optimal settings and paths
+

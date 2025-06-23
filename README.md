@@ -1,6 +1,6 @@
 # CISSP Quiz Application
 
-A comprehensive local-only CISSP quiz tool with AI-powered explanations and advanced study features.
+A comprehensive web-based CISSP quiz application with AI-powered explanations, 885 questions across all 8 CISSP domains, and modern responsive design.
 
 ## ✨ Features
 
@@ -25,33 +25,34 @@ A comprehensive local-only CISSP quiz tool with AI-powered explanations and adva
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.7+ 
-- Tkinter GUI library (install with `sudo pacman -S tk` on Arch Linux)
-- Optional: Ollama for AI explanations
-
-### Installation
-1. Clone or download this repository
-2. Ensure you have question JSON files in the `data/` directory
-3. Run the application:
+### Fresh Installation (Arch Linux)
+After cloning the repository on a fresh system:
 
 ```fish
-# Method 1: Using the launcher
-python quiz.py
-
-# Method 2: Using the module directly  
-python -m quiz_app.main
-
-# Method 3: Make launcher executable
-chmod +x quiz.py
-./quiz.py
+# One-command setup (installs everything)
+./setup.fish
 ```
 
-### First Run
-1. The application will create a `data/` directory if it doesn't exist
-2. Add your CISSP question JSON files to the `data/` directory
-3. Optional: Start Ollama for AI explanations (`ollama serve`)
-4. Launch the quiz application
+### Manual Installation
+```fish
+# Install dependencies
+sudo pacman -S python-flask python-requests
+
+# Optional: Install Ollama for AI explanations
+curl -fsSL https://ollama.ai/install.sh | sh
+ollama pull llama3.2:3b
+
+# Make scripts executable
+chmod +x launch-quiz.fish setup.fish
+
+# Launch the application
+./launch-quiz.fish
+```
+
+### Launch Methods
+1. **Via Fuzzel/Launcher**: Type "CISSP Quiz" in fuzzel
+2. **Via Terminal**: `./launch-quiz.fish`
+3. **Direct Python**: `python app.py` then visit http://localhost:5000
 
 ## 📋 Question File Format
 
@@ -91,22 +92,22 @@ Questions should be stored as JSON files in the `data/` directory:
 3. Click "Start Quiz" to begin
 
 ### During a Quiz
-- **Navigate**: Use arrow keys or Previous/Next buttons
-- **Submit**: Click Submit or press Enter
+- **Navigate**: Use Previous/Next buttons or keyboard shortcuts
+- **Submit**: Click Submit Answer or press Enter
 - **Mark Favorites**: Click the star button for difficult questions
-- **Get Explanations**: Click the lightbulb button (requires Ollama)
-- **View Progress**: Check the progress bar at the top
+- **Get Explanations**: Click Explain button after answering (requires Ollama)
+- **View Progress**: Check the progress bar and question counter
+- **AI Assistant**: Automatic explanations for wrong answers
 
-### Menu Options
-- **Quiz → New Quiz**: Start a new domain-selected quiz
-- **Quiz → Review Favorites**: Study only your marked favorite questions
-- **Quiz → Statistics**: View detailed performance analytics
-- **Quiz → Exit**: Close the application
+### Navigation
+- **Home**: Return to domain selection
+- **Statistics**: View detailed performance analytics
+- **Current Quiz**: Continue your current session
 
 ### Keyboard Shortcuts
 - `←/→` Arrow keys: Navigate between questions
 - `Enter`: Submit answer or go to next question
-- Mouse: Click to interact with all interface elements
+- Web interface works on any device with a browser
 
 ## 🤖 AI Integration (Optional)
 
