@@ -248,3 +248,9 @@
 - **Error Handling**: Clear error messages and troubleshooting guidance
 - **Zero Configuration**: Automatically detects optimal settings and paths
 
+## 2024-12-19 - Launch Script Cleanup
+- **Removed unused launch scripts**: Deleted launch-quiz-silent.fish, launch-quiz-desktop.fish, launch-quiz-wrapper.sh, cissp-quiz, and cissp-quiz-debug
+- **Kept launch-quiz.fish**: The preferred script for terminal usage that starts Flask in background and opens Brave browser
+- **Reason**: Fuzzel integration attempts failed, user prefers terminal launch, no need for multiple similar scripts
+- **Usage**: `./launch-quiz.fish` from terminal
+
