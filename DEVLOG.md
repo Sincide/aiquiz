@@ -263,3 +263,45 @@
 - **Visual enhancement**: Special styling for continue quiz card with gradient background and progress bar
 - **User flow**: Solves the issue where users lost progress when accidentally going back to home page
 
+## 2024-12-19 - Navigation & Answer Persistence Fixes
+- **Fixed "Next Question" button logic**: No longer incorrectly assumes wrong answer when navigating without submitting
+- **Added answer persistence**: Session now tracks `answered_questions` with user answers, correctness, and timestamps
+- **Prevents re-asking answered questions**: When navigating back/forth, previously answered questions show their results immediately
+- **New `/api/next_question` endpoint**: Separate from submit logic, properly advances question index without recording an answer
+- **Enhanced question display**: Shows previous answers and results when revisiting answered questions
+- **Pre-selection of previous answers**: MCQ radio buttons and ordering lists restore previous answers on revisit
+- **Improved UX flow**: Users can now freely navigate through quiz without losing answers or accidentally triggering wrong submissions
+- **AI explanation continuity**: AI explanations work correctly for previously answered questions using stored answer data
+
+## 2024-12-19 - Button Behavior Debugging
+- **Issue reported**: Two "Next Question" buttons (submit button changed to "Next Question →" and "Continue" in result card) behaving differently
+- **Debugging approach**: Added console logging to trace which functions are called by each button
+- **Button separation**: Created distinct functions - `handleSubmitButton()`, `continueToNext()`, and `navigateWithoutSubmit()`
+- **Expected behavior**: Both buttons should call `navigateWithoutSubmit()` when question is already answered
+- **Investigation needed**: Check browser console logs to verify actual button behavior vs expected behavior
+
+## 2024-12-19 - Single Button Simplification
+- **Removed confusing dual buttons**: Eliminated the "Continue" button from result card completely
+- **Single button logic**: Only one Submit/Next Question button now handles all interactions
+- **Button states**: "Submit Answer" → "Next Question →" → "Complete Quiz"
+- **Simplified event handling**: Single `handleSubmitButton()` function handles all button states
+- **Clear state transitions**: Submit answer → change to Next Question → navigate → change to Submit Answer (next question)
+- **End-of-quiz handling**: Button shows "Complete Quiz" on final question and triggers completion modal
+- **Removed redundant functions**: Eliminated `continueToNext()` and `nextQuestion()` legacy functions
+
+## 2024-12-19 - Duplicate Event Listeners Bug Fix
+- **Found root cause**: Previous button was incorrectly triggering submissions because of duplicate event listeners
+- **Problem**: Two event listeners on submit button - `handleSubmitButton()` (correct) and `submitAnswer()` (legacy, wrong)
+- **Legacy listener issue**: Old `submitAnswer()` function was auto-submitting answers on every button click
+- **Fix**: Removed duplicate event listener setup, now only uses `setupEventListeners()` function
+- **Result**: Previous button now works correctly without unwanted answer submissions
+- **Added debugging**: Console logging to track button clicks and navigation behavior
+
+## 2024-12-19 - Randomization Navigation Investigation
+- **Issue reported**: With randomization active, "Previous" button seems to show different questions instead of preserving sequence
+- **Expected behavior**: Previous button should navigate to actual previous question in the randomized sequence
+- **Current implementation**: Quiz start shuffles questions once, stores fixed `quiz_question_ids` array, navigation uses index
+- **Theory**: Should work correctly - randomization happens once at start, navigation preserves shuffled order
+- **Debugging approach**: Added server-side logging to track question ID sequences and index changes
+- **Investigation**: Need to verify if randomized sequence is actually preserved or if there's hidden re-shuffling
+

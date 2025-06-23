@@ -10,6 +10,7 @@ import random
 from flask import Flask, render_template, request, jsonify, session, redirect, g
 from datetime import datetime
 import sqlite3
+import hashlib
 
 # Import existing modules
 from quiz_app.data import load_questions
@@ -142,6 +143,8 @@ def start_quiz():
     session['current_index'] = 0
     session['quiz_mode'] = mode
     session['randomized'] = randomize
+    # Track which questions have been answered
+    session['answered_questions'] = {}  # question_id -> {answer, correct, timestamp}
     
     return jsonify({
         'success': True, 
@@ -168,11 +171,18 @@ def get_question():
     question_ids = session['quiz_question_ids']
     index = session.get('current_index', 0)
     
+    # Check if question sequence is stable
+    sequence_hash = hashlib.md5(str(question_ids).encode()).hexdigest()[:8]
+    print(f"Get question: index={index}, total={len(question_ids)}, sequence_hash={sequence_hash}")
+    
     if index >= len(question_ids):
         return jsonify({'completed': True})
     
     # Find the question by ID
     current_question_id = question_ids[index]
+    print(f"Serving question ID {current_question_id} at index {index}")
+    print(f"First 5 question IDs in sequence: {question_ids[:5]}")
+    
     question_obj = next((q for q in questions_data if q.id == current_question_id), None)
     
     if not question_obj:
@@ -182,13 +192,28 @@ def get_question():
     question = question_obj.__dict__
     is_fav = is_favorite(get_db(), question['id'])
     
-    return jsonify({
+    # Check if this question has been answered before
+    answered_questions = session.get('answered_questions', {})
+    question_id_str = str(question['id'])
+    previously_answered = question_id_str in answered_questions
+    
+    response_data = {
         'question': question,
         'index': index,
         'total': len(question_ids),
         'is_favorite': is_fav,
-        'mode': session.get('quiz_mode', 'normal')
-    })
+        'mode': session.get('quiz_mode', 'normal'),
+        'previously_answered': previously_answered
+    }
+    
+    # If previously answered, include the answer and result
+    if previously_answered:
+        answer_data = answered_questions[question_id_str]
+        response_data['previous_answer'] = answer_data['answer']
+        response_data['previous_correct'] = answer_data['correct']
+        response_data['correct_answer'] = question['answer']
+    
+    return jsonify(response_data)
 
 @app.route('/api/submit_answer', methods=['POST'])
 def submit_answer():
@@ -229,6 +254,15 @@ def submit_answer():
     # Store user answer for AI explanation
     session['last_user_answer'] = user_answer
     session['last_answer_correct'] = correct
+    
+    # Track this answer in the session
+    answered_questions = session.get('answered_questions', {})
+    answered_questions[str(question['id'])] = {
+        'answer': user_answer,
+        'correct': correct,
+        'timestamp': datetime.now().isoformat()
+    }
+    session['answered_questions'] = answered_questions
     
     # Move to next question
     session['current_index'] = index + 1
@@ -411,11 +445,40 @@ def previous_question():
         return jsonify({'error': 'No active quiz'}), 400
     
     current_index = session.get('current_index', 0)
+    question_ids = session['quiz_question_ids']
+    
+    print(f"Previous question: current_index={current_index}, total_questions={len(question_ids)}")
+    
     if current_index > 0:
-        session['current_index'] = current_index - 1
+        new_index = current_index - 1
+        session['current_index'] = new_index
+        print(f"Moving to previous question: index {current_index} -> {new_index}")
+        print(f"Question ID sequence around current position: {question_ids[max(0, new_index-1):new_index+3]}")
         return jsonify({'success': True})
     else:
+        print("Already at first question")
         return jsonify({'error': 'Already at first question'}), 400
+
+@app.route('/api/next_question', methods=['POST'])
+def next_question():
+    """Go to next question without submitting an answer"""
+    if 'quiz_question_ids' not in session:
+        return jsonify({'error': 'No active quiz'}), 400
+    
+    question_ids = session['quiz_question_ids']
+    current_index = session.get('current_index', 0)
+    
+    print(f"Next question: current_index={current_index}, total_questions={len(question_ids)}")
+    
+    if current_index + 1 < len(question_ids):
+        new_index = current_index + 1
+        session['current_index'] = new_index
+        print(f"Moving to next question: index {current_index} -> {new_index}")
+        print(f"Question ID sequence around current position: {question_ids[max(0, new_index-1):new_index+3]}")
+        return jsonify({'success': True})
+    else:
+        print("Quiz completed")
+        return jsonify({'completed': True})
 
 @app.route('/api/clear_session', methods=['POST'])
 def clear_session():
@@ -424,6 +487,7 @@ def clear_session():
     session.pop('current_index', None)
     session.pop('quiz_mode', None)
     session.pop('randomized', None)
+    session.pop('answered_questions', None)
     return jsonify({'success': True})
 
 if __name__ == '__main__':
