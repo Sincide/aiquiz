@@ -254,3 +254,12 @@
 - **Reason**: Fuzzel integration attempts failed, user prefers terminal launch, no need for multiple similar scripts
 - **Usage**: `./launch-quiz.fish` from terminal
 
+## 2024-12-19 - Continue Quiz Feature
+- **Added continue quiz functionality**: Users can now resume interrupted quiz sessions instead of always starting fresh
+- **Home page detection**: Checks for active quiz session (`quiz_question_ids` in session) and shows continue option if available
+- **Progress display**: Shows current question number, total questions, mode (normal/favorites), randomization status, and progress percentage
+- **Continue vs Start Fresh**: Two buttons - "Continue Quiz" goes directly to `/quiz`, "Start Fresh Quiz" clears session and reloads page
+- **Session management**: Added `/api/clear_session` endpoint to properly reset quiz state
+- **Visual enhancement**: Special styling for continue quiz card with gradient background and progress bar
+- **User flow**: Solves the issue where users lost progress when accidentally going back to home page
+

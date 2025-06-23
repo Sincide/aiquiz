@@ -81,10 +81,31 @@ def index():
     domain_counts = {domain: sum(1 for q in questions_data if q.domain == domain) 
                     for domain in domains}
     
+    # Check if there's an active quiz session
+    has_active_quiz = 'quiz_question_ids' in session and session.get('current_index', 0) < len(session.get('quiz_question_ids', []))
+    active_quiz_info = None
+    
+    if has_active_quiz:
+        question_ids = session['quiz_question_ids']
+        current_index = session.get('current_index', 0)
+        total_questions = len(question_ids)
+        quiz_mode = session.get('quiz_mode', 'normal')
+        randomized = session.get('randomized', True)
+        
+        active_quiz_info = {
+            'current_index': current_index,
+            'total_questions': total_questions,
+            'progress_percent': round((current_index / total_questions) * 100),
+            'mode': quiz_mode,
+            'randomized': randomized
+        }
+    
     return render_template('index.html', 
                          domains=domains, 
                          domain_counts=domain_counts,
-                         total_questions=len(questions_data))
+                         total_questions=len(questions_data),
+                         has_active_quiz=has_active_quiz,
+                         active_quiz_info=active_quiz_info)
 
 @app.route('/api/start_quiz', methods=['POST'])
 def start_quiz():
@@ -389,12 +410,21 @@ def previous_question():
     if 'quiz_question_ids' not in session:
         return jsonify({'error': 'No active quiz'}), 400
     
-    index = session.get('current_index', 0)
-    if index > 0:
-        session['current_index'] = index - 1
+    current_index = session.get('current_index', 0)
+    if current_index > 0:
+        session['current_index'] = current_index - 1
         return jsonify({'success': True})
     else:
         return jsonify({'error': 'Already at first question'}), 400
+
+@app.route('/api/clear_session', methods=['POST'])
+def clear_session():
+    """Clear the current quiz session"""
+    session.pop('quiz_question_ids', None)
+    session.pop('current_index', None)
+    session.pop('quiz_mode', None)
+    session.pop('randomized', None)
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     init_app()

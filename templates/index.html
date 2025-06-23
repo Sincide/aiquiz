@@ -15,8 +15,38 @@
     </div>
 
     <div class="quiz-setup">
+        {% if has_active_quiz %}
+        <div class="setup-card continue-quiz-card">
+            <h2 class="card-title">🔄 Continue Quiz</h2>
+            <p class="card-subtitle">You have an active quiz session in progress</p>
+            
+            <div class="quiz-progress">
+                <div class="progress-info">
+                    <span class="progress-text">
+                        Question {{ active_quiz_info.current_index + 1 }} of {{ active_quiz_info.total_questions }}
+                        {% if active_quiz_info.mode == 'favorites' %}(Favorites Review){% endif %}
+                        {% if active_quiz_info.randomized %}[Randomized]{% else %}[Sequential]{% endif %}
+                    </span>
+                    <span class="progress-percent">{{ active_quiz_info.progress_percent }}% Complete</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ active_quiz_info.progress_percent }}%"></div>
+                </div>
+            </div>
+
+            <div class="quiz-actions">
+                <button type="button" id="continueQuiz" class="btn btn-primary">
+                    ▶️ Continue Quiz
+                </button>
+                <button type="button" id="startFreshQuiz" class="btn btn-secondary">
+                    🔄 Start Fresh Quiz
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="setup-card">
-            <h2 class="card-title">📋 Select Study Domains</h2>
+            <h2 class="card-title">📋 {% if has_active_quiz %}Start New Quiz{% else %}Select Study Domains{% endif %}</h2>
             <p class="card-subtitle">Choose which CISSP domains you want to focus on for this quiz session</p>
             
             <div class="domain-selection">
@@ -90,6 +120,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearAllBtn = document.getElementById('clearAll');
     const startQuizBtn = document.getElementById('startQuiz');
     const reviewFavoritesBtn = document.getElementById('reviewFavorites');
+    const continueQuizBtn = document.getElementById('continueQuiz');
+    const startFreshQuizBtn = document.getElementById('startFreshQuiz');
     const domainCheckboxes = document.querySelectorAll('input[name="domain"]');
     const loadingModal = document.getElementById('loadingModal');
 
@@ -100,6 +132,28 @@ document.addEventListener('DOMContentLoaded', function() {
     clearAllBtn.addEventListener('click', () => {
         domainCheckboxes.forEach(cb => cb.checked = false);
     });
+
+    // Continue existing quiz
+    if (continueQuizBtn) {
+        continueQuizBtn.addEventListener('click', () => {
+            window.location.href = '/quiz';
+        });
+    }
+
+    // Start fresh quiz (clear session and show domain selection)
+    if (startFreshQuizBtn) {
+        startFreshQuizBtn.addEventListener('click', () => {
+            // Clear session and reload page
+            fetch('/api/clear_session', { method: 'POST' })
+                .then(() => {
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Error clearing session:', error);
+                    window.location.reload();
+                });
+        });
+    }
 
     startQuizBtn.addEventListener('click', () => {
         const selectedDomains = Array.from(domainCheckboxes)
