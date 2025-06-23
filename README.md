@@ -22,3 +22,4 @@ This project provides a local-only CISSP quiz tool with optional integration to 
 All data and configuration remain on your machine.
 
 See `DEVLOG.md` for a history of development steps and `PLANNED_FEATURES.md` for upcoming improvements.
+
