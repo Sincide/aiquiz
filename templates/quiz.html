@@ -1,0 +1,717 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz - CISSP Quiz{% endblock %}
+
+{% block content %}
+<div class="quiz-container">
+    <!-- Quiz Header -->
+    <div class="quiz-header">
+        <div class="quiz-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <span class="progress-text" id="progressText">Question 1 of 10</span>
+        </div>
+        <div class="quiz-mode" id="quizMode"></div>
+    </div>
+
+    <!-- Modern Card Layout -->
+    <div class="quiz-flow">
+        <!-- Main Question Area -->
+        <div class="question-area">
+            <div class="question-card">
+                <div class="question-meta">
+                    <div class="question-badge">
+                        <span class="question-number" id="questionNumber">#1</span>
+                        <span class="question-domain" id="questionDomain">Domain</span>
+                    </div>
+                    <div class="question-actions">
+                        {% if ollama_available %}
+                        <button class="btn-icon" id="explainQuestionBtn" title="Explain what this question is asking">
+                            <span class="icon">💡</span>
+                            <span class="text">Clarify</span>
+                        </button>
+                        {% endif %}
+                        <button class="btn-icon" id="favoriteBtn" title="Mark as favorite">
+                            <span class="icon">⭐</span>
+                            <span class="text">Favorite</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="question-content">
+                    <div class="question-text" id="questionText">
+                        Loading question...
+                    </div>
+                    
+                    <!-- MCQ Choices -->
+                    <div class="choices-container" id="mcqChoices" style="display: none;">
+                        <!-- Dynamic content -->
+                    </div>
+
+                    <!-- Ordering Choices -->
+                    <div class="ordering-container" id="orderingChoices" style="display: none;">
+                        <p class="ordering-hint">💡 Drag items to reorder them:</p>
+                        <div class="ordering-list" id="orderingList">
+                            <!-- Dynamic content -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="action-bar">
+                    <div class="action-left">
+                        <button class="btn btn-secondary" id="prevBtn">
+                            <span class="icon">←</span>
+                            <span>Previous</span>
+                        </button>
+                    </div>
+                    <div class="action-center">
+                        <button class="btn btn-primary" id="submitBtn">Submit Answer</button>
+                    </div>
+                    <div class="action-right">
+                        {% if ollama_available %}
+                        <button class="btn btn-accent" id="explainBtn" style="display: none;">
+                            <span class="icon">🎯</span>
+                            <span>Explain</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Card -->
+            <div class="result-card" id="resultCard" style="display: none;">
+                <div class="result-content">
+                    <div class="result-status" id="resultStatus">
+                        <span class="result-icon" id="resultIcon"></span>
+                        <span class="result-text" id="resultText"></span>
+                    </div>
+                    <div class="result-details" id="resultDetails">
+                        <div class="correct-answer" id="correctAnswer" style="display: none;"></div>
+                        <div class="explanation" id="explanation" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="nextQuestionBtn">
+                        <span>Continue</span>
+                        <span class="icon">→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Assistant Sidebar -->
+        <div class="ai-sidebar">
+            <div class="ai-panel">
+                <div class="ai-header">
+                    <div class="ai-title">
+                        <span class="ai-icon">🤖</span>
+                        <span>AI Assistant</span>
+                    </div>
+                    <div class="ai-status" id="aiStatus">Ready to help</div>
+                </div>
+                <div class="ai-content" id="aiContent">
+                    <div class="ai-welcome">
+                        <div class="ai-avatar">🧠</div>
+                        <h4>How can I help?</h4>
+                        <p>I can explain questions, analyze your answers, and provide CISSP insights.</p>
+                        <div class="ai-features">
+                            <div class="feature">💡 Question clarification</div>
+                            <div class="feature">🎯 Answer explanations</div>
+                            <div class="feature">📚 CISSP concepts</div>
+                            <div class="feature">💭 Study guidance</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Keep only the quiz complete modal -->
+
+<!-- Quiz Complete Modal -->
+<div id="completeModal" class="modal" style="display: none;">
+    <div class="modal-content complete-modal">
+        <div class="complete-header">
+            <span class="complete-icon">🎉</span>
+            <h2>Quiz Complete!</h2>
+        </div>
+        <div class="complete-body">
+            <p>Great job! You've completed all questions in this session.</p>
+            <p>Check your statistics to see how you performed.</p>
+        </div>
+        <div class="complete-actions">
+            <a href="/statistics" class="btn btn-accent">📊 View Statistics</a>
+            <a href="/" class="btn btn-primary">🚀 Start New Quiz</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentQuestion = null;
+let userAnswer = null;
+let sortableInstance = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadQuestion();
+    setupEventListeners();
+});
+
+function setupEventListeners() {
+    document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+    document.getElementById('prevBtn').addEventListener('click', previousQuestion);
+    document.getElementById('favoriteBtn').addEventListener('click', toggleFavorite);
+    document.getElementById('nextQuestionBtn').addEventListener('click', nextQuestion);
+    document.getElementById('closeExplanation').addEventListener('click', closeExplanationModal);
+    
+    {% if ollama_available %}
+    document.getElementById('explainBtn').addEventListener('click', getExplanation);
+    {% endif %}
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn.textContent.includes('Submit')) {
+                submitAnswer();
+            } else {
+                nextQuestion();
+            }
+        }
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            previousQuestion();
+        }
+        if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (document.getElementById('submitBtn').textContent.includes('Next')) {
+                nextQuestion();
+            }
+        }
+    });
+}
+
+function loadQuestion() {
+    fetch('/api/get_question')
+        .then(response => response.json())
+        .then(data => {
+            if (data.completed) {
+                showCompleteModal();
+                return;
+            }
+            
+            currentQuestion = data.question;
+            displayQuestion(data);
+        })
+        .catch(error => {
+            console.error('Error loading question:', error);
+            alert('Error loading question');
+        });
+}
+
+function displayQuestion(data) {
+    const { question, index, total, is_favorite, mode } = data;
+    
+    // Update progress
+    const progress = ((index + 1) / total) * 100;
+    document.getElementById('progressFill').style.width = progress + '%';
+    document.getElementById('progressText').textContent = `Question ${index + 1} of ${total}`;
+    
+    // Update mode indicator
+    let modeText = '';
+    if (mode === 'favorites') {
+        modeText += '[Favorites Review] ';
+    }
+    if (sessionStorage.getItem('randomized') === 'false') {
+        modeText += '[Sequential Order]';
+    } else if (sessionStorage.getItem('randomized') === 'true') {
+        modeText += '[Randomized Order]';
+    }
+    document.getElementById('quizMode').textContent = modeText;
+    
+    // Update question content
+    document.getElementById('questionNumber').textContent = `#${question.id}`;
+    document.getElementById('questionDomain').textContent = question.domain;
+    document.getElementById('questionText').textContent = question.text || question.question;
+    
+    // Update favorite button
+    const favoriteBtn = document.getElementById('favoriteBtn');
+    favoriteBtn.innerHTML = is_favorite ? '★ Unfavorite' : '☆ Favorite';
+    
+    // Update previous button
+    document.getElementById('prevBtn').disabled = index === 0;
+    
+    // Reset submit button and hide result display
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.textContent = 'Submit Answer';
+    submitBtn.disabled = false;
+    document.getElementById('resultCard').style.display = 'none';
+    
+    // Hide explain button until answer is submitted
+    {% if ollama_available %}
+    document.getElementById('explainBtn').style.display = 'none';
+    {% endif %}
+    
+    // Clear AI content
+    clearAIContent();
+    
+    // Display appropriate choice interface
+    if (question.type === 'mcq') {
+        displayMCQChoices(question.choices);
+    } else if (question.type === 'ordering') {
+        displayOrderingChoices(question.choices);
+    }
+    
+    userAnswer = null;
+}
+
+function displayMCQChoices(choices) {
+    document.getElementById('mcqChoices').style.display = 'block';
+    document.getElementById('orderingChoices').style.display = 'none';
+    
+    const container = document.getElementById('mcqChoices');
+    container.innerHTML = '';
+    
+    choices.forEach((choice, index) => {
+        const label = document.createElement('label');
+        label.className = 'choice-card';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'answer';
+        radio.value = choice;
+        radio.addEventListener('change', () => {
+            userAnswer = choice;
+        });
+        
+        const content = document.createElement('div');
+        content.className = 'choice-content';
+        content.innerHTML = `
+            <span class="choice-letter">${String.fromCharCode(65 + index)}</span>
+            <span class="choice-text">${choice}</span>
+        `;
+        
+        label.appendChild(radio);
+        label.appendChild(content);
+        container.appendChild(label);
+    });
+}
+
+function displayOrderingChoices(choices) {
+    document.getElementById('mcqChoices').style.display = 'none';
+    document.getElementById('orderingChoices').style.display = 'block';
+    
+    const container = document.getElementById('orderingList');
+    container.innerHTML = '';
+    
+    choices.forEach(choice => {
+        const item = document.createElement('div');
+        item.className = 'ordering-item';
+        item.textContent = choice;
+        item.draggable = true;
+        container.appendChild(item);
+    });
+    
+    // Add drag and drop functionality
+    setupDragAndDrop(container);
+}
+
+function setupDragAndDrop(container) {
+    let draggedElement = null;
+    
+    container.addEventListener('dragstart', function(e) {
+        draggedElement = e.target;
+        e.target.style.opacity = '0.5';
+    });
+    
+    container.addEventListener('dragend', function(e) {
+        e.target.style.opacity = '';
+        draggedElement = null;
+    });
+    
+    container.addEventListener('dragover', function(e) {
+        e.preventDefault();
+    });
+    
+    container.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (draggedElement && e.target.classList.contains('ordering-item')) {
+            const items = Array.from(container.children);
+            const draggedIndex = items.indexOf(draggedElement);
+            const targetIndex = items.indexOf(e.target);
+            
+            if (draggedIndex < targetIndex) {
+                container.insertBefore(draggedElement, e.target.nextSibling);
+            } else {
+                container.insertBefore(draggedElement, e.target);
+            }
+        }
+    });
+}
+
+function submitAnswer() {
+    if (currentQuestion.type === 'mcq') {
+        if (!userAnswer) {
+            alert('Please select an answer first!');
+            return;
+        }
+    } else if (currentQuestion.type === 'ordering') {
+        const items = Array.from(document.getElementById('orderingList').children);
+        userAnswer = items.map(item => item.textContent);
+    }
+    
+    fetch('/api/submit_answer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            answer: userAnswer
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showResultDisplay(data);
+        document.getElementById('submitBtn').textContent = 'Next Question →';
+        
+        // Show explain button after answering
+        {% if ollama_available %}
+        document.getElementById('explainBtn').style.display = 'inline-flex';
+        {% endif %}
+    })
+    .catch(error => {
+        console.error('Error submitting answer:', error);
+        alert('Error submitting answer');
+    });
+}
+
+function showResultDisplay(data) {
+    const resultCard = document.getElementById('resultCard');
+    const icon = document.getElementById('resultIcon');
+    const text = document.getElementById('resultText');
+    const correctAnswer = document.getElementById('correctAnswer');
+    const explanation = document.getElementById('explanation');
+    
+    if (data.correct) {
+        icon.textContent = '✅';
+        text.textContent = 'Correct!';
+        text.className = 'result-text correct';
+        correctAnswer.style.display = 'none';
+        
+        // Show brief success message in AI panel
+        updateAIContent(`
+            <div class="ai-response">
+                <h4>✅ Well Done!</h4>
+                <p>You got that one right! Keep up the good work.</p>
+            </div>
+        `, 'Correct!');
+    } else {
+        icon.textContent = '❌';
+        text.textContent = 'Incorrect';
+        text.className = 'result-text incorrect';
+        correctAnswer.style.display = 'block';
+        correctAnswer.innerHTML = `<strong>Correct answer:</strong> ${
+            Array.isArray(data.correct_answer) 
+                ? data.correct_answer.join(' → ') 
+                : data.correct_answer
+        }`;
+        
+        // Automatically get AI explanation for wrong answers
+        setTimeout(() => getAIExplanation(true), 500);
+    }
+    
+    if (data.explanation) {
+        explanation.style.display = 'block';
+        explanation.innerHTML = `<strong>💡 Built-in Explanation:</strong><br>${data.explanation}`;
+    } else {
+        explanation.style.display = 'none';
+    }
+    
+    document.getElementById('nextQuestionBtn').textContent = 
+        data.next_available ? 'Continue' : 'Complete Quiz';
+    
+    resultCard.style.display = 'block';
+}
+
+function nextQuestion() {
+    document.getElementById('resultCard').style.display = 'none';
+    loadQuestion();
+}
+
+function previousQuestion() {
+    fetch('/api/previous_question', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadQuestion();
+        }
+    })
+    .catch(error => console.error('Error going to previous question:', error));
+}
+
+function toggleFavorite() {
+    fetch('/api/toggle_favorite', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        const btn = document.getElementById('favoriteBtn');
+        btn.innerHTML = data.is_favorite ? '★ Unfavorite' : '☆ Favorite';
+    })
+    .catch(error => console.error('Error toggling favorite:', error));
+}
+
+// AI Helper Functions
+function clearAIContent() {
+    const aiContent = document.getElementById('aiContent');
+    const aiStatus = document.getElementById('aiStatus');
+    
+    aiContent.innerHTML = `
+        <div class="ai-welcome">
+            <div class="ai-avatar">🧠</div>
+            <h4>How can I help?</h4>
+            <p>I can explain questions, analyze your answers, and provide CISSP insights.</p>
+            <div class="ai-features">
+                <div class="feature">💡 Question clarification</div>
+                <div class="feature">🎯 Answer explanations</div>
+                <div class="feature">📚 CISSP concepts</div>
+                <div class="feature">💭 Study guidance</div>
+            </div>
+        </div>
+    `;
+    aiStatus.textContent = 'Ready to help';
+}
+
+function updateAIContent(content, status = 'Analyzing...') {
+    const aiContent = document.getElementById('aiContent');
+    const aiStatus = document.getElementById('aiStatus');
+    
+    aiContent.innerHTML = content;
+    aiStatus.textContent = status;
+}
+
+function formatAIResponse(text) {
+    // Clean up the text first
+    let formatted = text.trim();
+    
+    // Convert markdown-style formatting to HTML
+    formatted = formatted
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    // Split into paragraphs first
+    let paragraphs = formatted.split('\n\n');
+    let result = '';
+    
+    for (let paragraph of paragraphs) {
+        paragraph = paragraph.trim();
+        if (!paragraph) continue;
+        
+        // Check if it's a numbered list
+        if (/^\d+\./.test(paragraph)) {
+            let items = paragraph.split(/\n(?=\d+\.)/);
+            result += '<ol>';
+            for (let item of items) {
+                let content = item.replace(/^\d+\.\s*/, '').replace(/\n/g, '<br>');
+                result += `<li>${content}</li>`;
+            }
+            result += '</ol>';
+        }
+        // Check if it's a bullet list
+        else if (paragraph.includes('\n- ') || paragraph.startsWith('- ')) {
+            let items = paragraph.split(/\n- /);
+            result += '<ul>';
+            for (let i = 0; i < items.length; i++) {
+                let item = items[i];
+                if (i === 0 && !item.startsWith('- ')) {
+                    // First item might not start with -
+                    if (item.trim()) {
+                        result += `<p>${item.replace(/\n/g, '<br>')}</p>`;
+                    }
+                } else {
+                    item = item.replace(/^- /, '').replace(/\n/g, '<br>');
+                    if (item.trim()) {
+                        result += `<li>${item}</li>`;
+                    }
+                }
+            }
+            result += '</ul>';
+        }
+        // Regular paragraph
+        else {
+            result += `<p>${paragraph.replace(/\n/g, '<br>')}</p>`;
+        }
+    }
+    
+    return `<div class="ai-response">${result}</div>`;
+}
+
+{% if ollama_available %}
+function getAIExplanation(isAutomatic = false) {
+    const aiContent = document.getElementById('aiContent');
+    const aiStatus = document.getElementById('aiStatus');
+    const explainBtn = document.getElementById('explainBtn');
+    
+    // Show loading state
+    updateAIContent(`
+        <div class="ai-response">
+            <div style="text-align: center; padding: 2rem;">
+                <div class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #333; border-top: 2px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 1rem;">🤖 Generating explanation...</p>
+                <p style="font-size: 0.875rem; color: #666;">This may take 10-30 seconds</p>
+            </div>
+        </div>
+    `, 'Thinking...');
+    
+    if (explainBtn) explainBtn.disabled = true;
+    
+    // Make request to get AI explanation
+    fetch('/api/get_explanation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.explanation) {
+            const formattedExplanation = formatAIResponse(data.explanation);
+            updateAIContent(formattedExplanation, 'Explanation ready');
+        } else {
+            updateAIContent(`
+                <div class="ai-response">
+                    <h4>❌ Explanation Not Available</h4>
+                    <p>Sorry, I couldn't generate an explanation at this time. This might be because:</p>
+                    <ul>
+                        <li>The AI service is not available</li>
+                        <li>There was a connection issue</li>
+                        <li>No question is currently loaded</li>
+                    </ul>
+                </div>
+            `, 'Error occurred');
+        }
+    })
+    .catch(error => {
+        console.error('Error getting AI explanation:', error);
+        updateAIContent(`
+            <div class="ai-response">
+                <h4>🔧 Connection Error</h4>
+                <p>Unable to get AI explanation. Please check your connection and try again.</p>
+            </div>
+        `, 'Connection failed');
+    })
+    .finally(() => {
+        if (explainBtn) explainBtn.disabled = false;
+    });
+}
+
+function explainQuestion() {
+    const aiContent = document.getElementById('aiContent');
+    const aiStatus = document.getElementById('aiStatus');
+    const explainQuestionBtn = document.getElementById('explainQuestionBtn');
+    
+    // Show loading state
+    updateAIContent(`
+        <div class="ai-response">
+            <div style="text-align: center; padding: 2rem;">
+                <div class="loading-spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #333; border-top: 2px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="margin-top: 1rem;">🤖 Clarifying question...</p>
+                <p style="font-size: 0.875rem; color: #666;">This may take 10-30 seconds</p>
+            </div>
+        </div>
+    `, 'Analyzing question...');
+    
+    if (explainQuestionBtn) explainQuestionBtn.disabled = true;
+    
+    // Make request to get question explanation
+    fetch('/api/explain_question', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.explanation) {
+            const formattedExplanation = formatAIResponse(data.explanation);
+            updateAIContent(formattedExplanation, 'Question clarified');
+        } else {
+            updateAIContent(`
+                <div class="ai-response">
+                    <h4>❌ Question Explanation Not Available</h4>
+                    <p>Sorry, I couldn't explain this question at this time. This might be because:</p>
+                    <ul>
+                        <li>The AI service is not available</li>
+                        <li>There was a connection issue</li>
+                        <li>No question is currently loaded</li>
+                    </ul>
+                </div>
+            `, 'Error occurred');
+        }
+    })
+    .catch(error => {
+        console.error('Error explaining question:', error);
+        updateAIContent(`
+            <div class="ai-response">
+                <h4>🔧 Connection Error</h4>
+                <p>Unable to explain question. Please check your connection and try again.</p>
+            </div>
+        `, 'Connection failed');
+    })
+    .finally(() => {
+        if (explainQuestionBtn) explainQuestionBtn.disabled = false;
+    });
+}
+{% endif %}
+
+function showCompleteModal() {
+    document.getElementById('completeModal').style.display = 'flex';
+}
+
+// Close modals when clicking outside
+window.addEventListener('click', function(e) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    loadQuestion();
+    
+    document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+    document.getElementById('nextQuestionBtn').addEventListener('click', nextQuestion);
+    document.getElementById('prevBtn').addEventListener('click', previousQuestion);
+    document.getElementById('favoriteBtn').addEventListener('click', toggleFavorite);
+    
+    // AI explanation buttons
+    {% if ollama_available %}
+    document.getElementById('explainBtn').addEventListener('click', () => getAIExplanation(false));
+    document.getElementById('explainQuestionBtn').addEventListener('click', explainQuestion);
+    {% endif %}
+    
+    // Add CSS for loading spinner animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %} 

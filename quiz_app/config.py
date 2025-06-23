@@ -4,14 +4,22 @@ import os
 CONFIG_FILE = 'quiz_config.json'
 DEFAULT_CONFIG = {
     'data_dir': 'data',
-    'ollama_model': 'llama2'
+    'ollama_model': 'llama3.2:3b'
 }
 
 
 def load_config() -> dict:
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-            cfg = json.load(f)
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:
+                    cfg = json.loads(content)
+                else:
+                    cfg = DEFAULT_CONFIG
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            cfg = DEFAULT_CONFIG
+            save_config(cfg)
     else:
         cfg = DEFAULT_CONFIG
         save_config(cfg)

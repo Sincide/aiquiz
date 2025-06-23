@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Home - CISSP Quiz{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero-section">
+        <h1 class="hero-title">🎯 CISSP Quiz Application</h1>
+        <p class="hero-subtitle">Master your CISSP certification with targeted practice questions</p>
+        <div class="stats-bar">
+            <span class="stat-item">📚 {{ total_questions }} Questions Available</span>
+            <span class="stat-item">🎓 8 CISSP Domains Covered</span>
+            <span class="stat-item">🤖 AI-Powered Explanations</span>
+        </div>
+    </div>
+
+    <div class="quiz-setup">
+        <div class="setup-card">
+            <h2 class="card-title">📋 Select Study Domains</h2>
+            <p class="card-subtitle">Choose which CISSP domains you want to focus on for this quiz session</p>
+            
+            <div class="domain-selection">
+                {% for domain in domains %}
+                <label class="domain-card">
+                    <input type="checkbox" name="domain" value="{{ domain }}" checked>
+                    <div class="domain-content">
+                        <span class="domain-name">{{ domain }}</span>
+                        <span class="domain-count">{{ domain_counts[domain] }} questions</span>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="selection-controls">
+                <button type="button" id="selectAll" class="btn btn-secondary">Select All</button>
+                <button type="button" id="clearAll" class="btn btn-secondary">Clear All</button>
+            </div>
+
+            <div class="quiz-options">
+                <h3 class="options-title">📋 Quiz Options</h3>
+                <label class="option-card">
+                    <input type="checkbox" id="randomizeQuestions" checked>
+                    <div class="option-content">
+                        <span class="option-name">🎲 Randomize Questions</span>
+                        <span class="option-description">Shuffle question order for varied practice</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="quiz-actions">
+                <button type="button" id="startQuiz" class="btn btn-primary">
+                    🚀 Start New Quiz
+                </button>
+                <button type="button" id="reviewFavorites" class="btn btn-accent">
+                    ⭐ Review Favorites
+                </button>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3 class="info-title">💡 How it Works</h3>
+            <ul class="info-list">
+                <li>🎲 Questions are randomized for varied practice</li>
+                <li>⭐ Mark difficult questions as favorites</li>
+                <li>📊 Track your performance with detailed statistics</li>
+                <li>🤖 Get AI explanations for each question</li>
+                <li>🔄 Review favorite questions in dedicated sessions</li>
+            </ul>
+            
+            <div class="info-highlight">
+                <strong>🔒 Privacy First:</strong> All data stays on your device. No tracking, no external servers.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div id="loadingModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="loading-spinner"></div>
+        <p>Setting up your quiz...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllBtn = document.getElementById('selectAll');
+    const clearAllBtn = document.getElementById('clearAll');
+    const startQuizBtn = document.getElementById('startQuiz');
+    const reviewFavoritesBtn = document.getElementById('reviewFavorites');
+    const domainCheckboxes = document.querySelectorAll('input[name="domain"]');
+    const loadingModal = document.getElementById('loadingModal');
+
+    selectAllBtn.addEventListener('click', () => {
+        domainCheckboxes.forEach(cb => cb.checked = true);
+    });
+
+    clearAllBtn.addEventListener('click', () => {
+        domainCheckboxes.forEach(cb => cb.checked = false);
+    });
+
+    startQuizBtn.addEventListener('click', () => {
+        const selectedDomains = Array.from(domainCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+
+        if (selectedDomains.length === 0) {
+            alert('Please select at least one domain.');
+            return;
+        }
+
+        const randomize = document.getElementById('randomizeQuestions').checked;
+        startQuiz(selectedDomains, 'normal', randomize);
+    });
+
+    reviewFavoritesBtn.addEventListener('click', () => {
+        const randomize = document.getElementById('randomizeQuestions').checked;
+        startQuiz([], 'favorites', randomize);
+    });
+
+    function startQuiz(domains, mode, randomize = true) {
+        loadingModal.style.display = 'flex';
+        
+        fetch('/api/start_quiz', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                domains: domains,
+                mode: mode,
+                randomize: randomize
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingModal.style.display = 'none';
+            if (data.success) {
+                // Store randomization setting for the quiz interface
+                sessionStorage.setItem('randomized', randomize.toString());
+                window.location.href = '/quiz';
+            } else {
+                alert(data.error || 'Failed to start quiz');
+            }
+        })
+        .catch(error => {
+            loadingModal.style.display = 'none';
+            alert('Error starting quiz: ' + error.message);
+        });
+    }
+});
+</script>
+{% endblock %} 
