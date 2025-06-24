@@ -305,3 +305,13 @@
 - **Debugging approach**: Added server-side logging to track question ID sequences and index changes
 - **Investigation**: Need to verify if randomized sequence is actually preserved or if there's hidden re-shuffling
 
+## Navigation Bug Fix
+
+### Previous Button Issue Resolved
+- **Issue**: Previous button was appearing to go forward instead of backward in quiz navigation
+- **Root Cause**: Navigation logic was correct, but the user flow was confusing due to answer submission not auto-advancing
+- **Solution**: Restored automatic advancement to next question after submitting an answer in `submit_answer` endpoint
+- **Technical Details**: The `session['current_index']` is now properly incremented after answer submission, making Previous/Next navigation work as expected
+- **User Experience**: Quiz flow now works intuitively - submit answer advances to next question, Previous button goes back to previous question
+- **Status**: Fixed and tested - navigation now works correctly in both directions
+

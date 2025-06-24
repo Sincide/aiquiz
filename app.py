@@ -264,7 +264,7 @@ def submit_answer():
     }
     session['answered_questions'] = answered_questions
     
-    # Move to next question
+    # Move to next question after submitting answer
     session['current_index'] = index + 1
     
     return jsonify({
@@ -447,16 +447,11 @@ def previous_question():
     current_index = session.get('current_index', 0)
     question_ids = session['quiz_question_ids']
     
-    print(f"Previous question: current_index={current_index}, total_questions={len(question_ids)}")
-    
     if current_index > 0:
         new_index = current_index - 1
         session['current_index'] = new_index
-        print(f"Moving to previous question: index {current_index} -> {new_index}")
-        print(f"Question ID sequence around current position: {question_ids[max(0, new_index-1):new_index+3]}")
         return jsonify({'success': True})
     else:
-        print("Already at first question")
         return jsonify({'error': 'Already at first question'}), 400
 
 @app.route('/api/next_question', methods=['POST'])
